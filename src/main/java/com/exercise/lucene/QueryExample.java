@@ -53,7 +53,7 @@ public class QueryExample {
     }
 
     /**
-     * 查询方式2：查询API
+     * 查询方式2：Query API
      * @throws Exception
      */
     public static void queryAPI() throws Exception {

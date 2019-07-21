@@ -1,0 +1,9 @@
+server:
+    port: 12090
+
+logging:
+    level:
+        com.exercise: DEBUG
+
+zookeeper:
+    servers: 192.168.152.128:2181,192.168.152.129:2181,192.168.152.130:2181

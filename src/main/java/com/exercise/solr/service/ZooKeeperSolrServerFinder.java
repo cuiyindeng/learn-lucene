@@ -67,6 +67,13 @@ public class ZooKeeperSolrServerFinder implements SolrServerFinder {
 		return getServer().replace("http", "solr") + "?soTimeout=5000";
 	}
 
+	public String getServerUrl() {
+		int serverChoice = random.nextInt(availableServers.size());
+		final SolrServerInfo server = availableServers.get(serverChoice);
+		log.debug("Selected solr server url: {}", server.server);
+		return server.server;
+	}
+
 	private class Executor implements Watcher, AsyncCallback.DataCallback {
 
 		private final ObjectMapper mapper = new ObjectMapper();

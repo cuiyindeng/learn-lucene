@@ -37,9 +37,9 @@ public class ZooKeeperSolrServerFinder implements SolrServerFinder {
 	public void setup() {
 		try {
 			zk = new ZooKeeper(zooKeeperServerList, 3000, new Executor());
-			log.debug("Checking for live solr nodes.");
+			log.debug("1........Checking for live solr nodes.");
 			zk.exists("/live_nodes", new Executor());
-		} catch (IOException | KeeperException | InterruptedException ex) {
+		} catch (Exception ex) {
 			throw new RuntimeException(ex);
 		}
 	}
@@ -67,10 +67,11 @@ public class ZooKeeperSolrServerFinder implements SolrServerFinder {
 		return getServer().replace("http", "solr") + "?soTimeout=5000";
 	}
 
+	@Override
 	public String getServerUrl() {
 		int serverChoice = random.nextInt(availableServers.size());
 		final SolrServerInfo server = availableServers.get(serverChoice);
-		log.debug("Selected solr server url: {}", server.server);
+		log.debug("10........Selected solr server url: {}", server.server);
 		return server.server;
 	}
 
@@ -78,10 +79,16 @@ public class ZooKeeperSolrServerFinder implements SolrServerFinder {
 
 		private final ObjectMapper mapper = new ObjectMapper();
 
+		/**
+		 * Watcher接口的方法，用来接收Zookeeper Server触发的Watcher事件通知
+		 * @param we
+		 */
 		@Override
 		public void process(WatchedEvent we) {
+			log.debug("2........call process method, path:{}, type:{}", we.getPath(), we.getType());
+			//第一次连接时，EventType为None (-1)
 			if (we.getType() == Event.EventType.None) {
-				log.debug("Waiting for connection. Current state: {}", we.getState());
+				log.debug("3-1........Waiting for connection. Current state: {}", we.getState());
 				if (we.getState() == Event.KeeperState.SyncConnected) {
 					try {
 						zk.getData("/collections/" + collectionName + "/state.json", this, this, null);
@@ -90,21 +97,37 @@ public class ZooKeeperSolrServerFinder implements SolrServerFinder {
 					}
 				}
 			} else {
-				log.debug("Event for {}/{}", we.getPath(), we.getType());
+				/**
+				 当zookeeper Server触发的EventType为
+				 NodeCreated (1),
+				 NodeDeleted (2),
+				 NodeDataChanged (3),
+				 NodeChildrenChanged (4);
+				时会执行此逻辑。也就是说Solr Cloud的某个Node有变动时，此逻辑也会执行。
+				 */
+				log.debug("3-2........Event for {}/{}", we.getPath(), we.getType());
 				zk.getData("/collections/" + collectionName + "/state.json", this, this, null);
 			}
 		}
 
+		/**
+		 * AsyncCallback.DataCallback接口的方法，异步接口通常用在：应用启动的时候，获取一些配置信息，例如“机器列表”
+		 * @param resultCode
+		 * @param path
+		 * @param ctx
+		 * @param bytes
+		 * @param stat
+		 */
 		@Override
 		public void processResult(int resultCode, String path, Object ctx, byte[] bytes, Stat stat) {
-			log.debug("Data changed for path: {}/{}", path, resultCode);
+			log.debug("4........Data changed for path: {}/{}", path, resultCode);
 			StringBuilder bld = new StringBuilder();
 			for (byte aByte : bytes) {
 				bld.append((char) aByte);
 			}
 			try {
 				final String rawJson = bld.toString();
-				log.debug("Current raw path info is: {}", rawJson);
+				log.debug("5........Current raw path info is: {}", rawJson);
 				JsonNode data = mapper.readTree(rawJson);
 				JsonNode jsonConfig = data.get(collectionName);
 				JsonNode shardsAvailable = jsonConfig.get("shards");
@@ -112,7 +135,7 @@ public class ZooKeeperSolrServerFinder implements SolrServerFinder {
 				List<SolrServerInfo> newServers = new ArrayList<>();
 				while (shardNames.hasNext()) {
 					String shardName = shardNames.next();
-					log.debug("Found shard: {}", shardName);
+					log.debug("6........Found shard: {}", shardName);
 					JsonNode shardReplicas = shardsAvailable.get(shardName).get("replicas");
 					Iterator<String> replicaNames = shardReplicas.fieldNames();
 					while (replicaNames.hasNext()) {
@@ -120,7 +143,7 @@ public class ZooKeeperSolrServerFinder implements SolrServerFinder {
 						final String state = replica.get("state").textValue();
 						final String url = replica.get("base_url").textValue();
 						final String forCore = replica.get("core").textValue();
-						log.debug("Found server {}/{}, it's current state is: {}", new Object[]{url,forCore, state});
+						log.debug("7........Found server {}/{}, it's current state is: {}", new Object[]{url,forCore, state});
 						if (state.equals("active")) {
 							newServers.add(new SolrServerInfo(url, forCore));
 						}
@@ -132,7 +155,7 @@ public class ZooKeeperSolrServerFinder implements SolrServerFinder {
 				throw new RuntimeException(ex);
 			}
 
-			log.debug("Found {} active server(s)", availableServers.size());
+			log.debug("8........Found {} active server(s)", availableServers.size());
 		}
 	}
 	

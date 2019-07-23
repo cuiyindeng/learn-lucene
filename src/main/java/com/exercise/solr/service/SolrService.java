@@ -32,6 +32,11 @@ public class SolrService {
     private SolrServerFinder solrServerFinder;
     private final String RESTAURANTS_COLLECTION_NAME = "restaurants";
 
+    /**
+     * 测试索引
+     * @throws IOException
+     * @throws SolrServerException
+     */
     public void solrIndex() throws IOException, SolrServerException {
         HttpSolrClient httpSolrClient = getSolrClient();
 
@@ -59,6 +64,11 @@ public class SolrService {
                 .build();
     }
 
+    /**
+     * 测试搜索
+     * @throws IOException
+     * @throws SolrServerException
+     */
     public void solrSearch() throws IOException, SolrServerException {
         final HttpSolrClient client = getSolrClient();
 
